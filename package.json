@@ -1,0 +1,16 @@
+{
+  "name": "sharedjs",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "build": "npm run build:ts && npm run build:rename",
+    "build:ts": "tsc",
+    "build:rename": "mkdir -p dist && mv -f dist/hello.js dist/shared_lib.js || true"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}
+
+
