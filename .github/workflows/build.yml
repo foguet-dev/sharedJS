@@ -37,78 +37,17 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           cp dist/shared_lib.js dist/shared_lib-$VERSION.js
           cp dist/shared_lib.js dist/shared_lib-latest.js
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          name: shared_lib-artifacts
-          path: |
-            dist/shared_lib.js
-            dist/shared_lib-${{ steps.version_files.outputs.version }}.js
-            dist/shared_lib-latest.js
-
-      - name: Create or move git tags (v<version> and latest)
-        env:
-          VERSION: ${{ steps.version_files.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      
+      
+      - name: Sync files to S3
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag -f v$VERSION
-          git tag -f latest
-          git push origin -f v$VERSION
-          git push origin -f latest
-
-      - name: Prune old version tags (keep newest 50)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Ensure we have all tags locally
-          git fetch --tags --force
-          # List version tags (starting with 'v'), newest first by creation date
-          TAGS=$(git for-each-ref --sort=-creatordate --format='%(refname:short)' refs/tags | grep '^v')
-          COUNT=0
-          for t in $TAGS; do
-            COUNT=$((COUNT+1))
-            if [ $COUNT -le 50 ]; then
-              continue
-            fi
-            echo "Deleting old tag: $t"
-            git push origin :refs/tags/$t || true
-            git tag -d "$t" || true
-          done
-
-  cleanup:
-    name: Cleanup old workflow runs (keep newest 50)
-    runs-on: ubuntu-latest
-    needs: build
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Delete older runs beyond 50
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const workflow_id = '.github/workflows/build.yml';
-            const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-              owner,
-              repo,
-              workflow_id,
-              branch: 'main',
-              per_page: 100
-            });
-            runs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            const toDelete = runs.slice(50);
-            core.info(`Keeping ${runs.length - toDelete.length} runs, deleting ${toDelete.length}`);
-            for (const run of toDelete) {
-              core.info(`Deleting run ${run.id} from ${run.created_at}`);
-              try {
-                await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id });
-              } catch (e) {
-                core.warning(`Failed to delete run ${run.id}: ${e.message}`);
-              }
-            }
-
-
+          # Sync your JavaScript files to S3
+          aws s3 sync ./dist/ s3://${{ secrets.S3_BUCKET }}/
+          # Or sync specific files
+          # aws s3 cp ./your-file.js s3://${{ secrets.S3_BUCKET }}/
