@@ -18,6 +18,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+            role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+            aws-region: eu-central-1
+        
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,12 +45,7 @@ jobs:
           cp dist/shared_lib.js dist/shared_lib-$VERSION.js
           cp dist/shared_lib.js dist/shared_lib-latest.js
       
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
+
       
       - name: Sync files to S3
         run: |
