@@ -11,6 +11,7 @@ jobs:
     permissions:
       contents: write
       actions: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -22,7 +23,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
             role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-            aws-region: eu-central-1
+            aws-region: ${{ secrets.AWS_REGION }}
         
 
       - name: Use Node.js
